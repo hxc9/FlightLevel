@@ -1,0 +1,26 @@
+{
+    "author": "alexis.hafner@gmail.com",
+    "dependencies": {},
+    "keywords": [],
+    "name": "flightlevel",
+    "pebble": {
+        "displayName": "Flightlevel",
+        "enableMultiJS": true,
+        "messageKeys": [],
+        "projectType": "native",
+        "resources": {
+            "media": []
+        },
+        "sdkVersion": "3",
+        "targetPlatforms": [
+            "aplite",
+            "basalt",
+            "diorite"
+        ],
+        "uuid": "1ef43171-b59f-41a0-8fd0-ee14bbc147ef",
+        "watchapp": {
+            "watchface": false
+        }
+    },
+    "version": "1.0.0"
+}
