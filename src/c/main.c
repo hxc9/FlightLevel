@@ -23,16 +23,12 @@ static void config_provider(Window *window) {
 
 static void main_window_load(Window *window) {
   Layer *window_layer = window_get_root_layer(window);
-  
   GRect bounds = layer_get_bounds(window_layer);
+  
   clock_init(window_layer, bounds);
-  
   battery_init(window_layer, bounds);
-  
   mission_init(window_layer, bounds);
-  
   endurance_init(window_layer, bounds);
-  
   et_init(window_layer, bounds);
 }
 
