@@ -19,7 +19,7 @@ static void down_single_click_handler(ClickRecognizerRef recognizer, void *conte
 }
 
 static void select_single_click_handler(ClickRecognizerRef recognizer, void *context) {
-  // TODO switch between mission displays
+  mission_switch_display();
 }
 
 static void up_single_click_handler(ClickRecognizerRef recognizer, void *context) {

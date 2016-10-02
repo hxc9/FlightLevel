@@ -7,6 +7,20 @@ static TextLayer *s_main_count;
 static TextLayer *s_live_indicator;
 static Layer *s_layer_live_indicator;
 
+typedef struct Info {
+  bool active;
+  time_t timestamp;
+  char name[3];
+  char buf[6];
+} info_t;
+
+typedef enum Info_category {
+  FT, TO, LD
+} info_cat_t;
+
+static info_t s_info_roll[3];
+static const int INFO_ROLL_SIZE = sizeof(s_info_roll) / sizeof(info_t);
+
 typedef struct Phase {
   struct Phase *(*next)();
   void (*start)(time_t tick);
@@ -15,6 +29,13 @@ typedef struct Phase {
 } phase_t;
 
 static void post_start(time_t tick) {
+  s_info_roll[LD].timestamp = tick;
+  format_time_hhmm(tick, s_info_roll[LD].buf, sizeof(s_info_roll[LD].buf));
+  
+  time_t flight_time = s_info_roll[LD].timestamp - s_info_roll[TO].timestamp;
+  format_duration_hhmm(flight_time, s_info_roll[FT].buf, sizeof(s_info_roll[FT].buf));
+  
+  s_info_roll[LD].active = true;
   text_layer_set_background_color(s_main_count, GColorWhite);
   text_layer_set_text_color(s_main_count, GColorBlack);
 }
@@ -25,16 +46,9 @@ static phase_t s_postflight = {
   .update = NULL
 };
 
-static time_t s_ft_start;
-
 static void ft_update(time_t tick) {
-  int flight_time = tick - s_ft_start;
-  int minutes = (int)flight_time / 60 % 60;
-  int hours = (int)flight_time / 3600 % 1000;
-  
-  static char ft_buffer[] = "000:00";
-  snprintf(ft_buffer, sizeof(ft_buffer), "%d:%02d", hours, minutes);
-  text_layer_set_text(s_main_count, ft_buffer);
+  time_t flight_time = tick - s_info_roll[TO].timestamp;
+  format_duration_hhmm(flight_time, s_info_roll[FT].buf, sizeof(s_info_roll[FT].buf));
   
   static bool tick_tock = false;
   tick_tock = !tick_tock;
@@ -42,8 +56,9 @@ static void ft_update(time_t tick) {
 }
 
 static void ft_start(time_t tick) {
-  s_ft_start = tick;
-  ft_update(s_ft_start);
+  s_info_roll[TO].timestamp = tick;
+  format_time_hhmm(tick, s_info_roll[TO].buf, sizeof(s_info_roll[TO].buf));
+  s_info_roll[TO].active = true;
 }
 
 static phase_t *ft_next() {
@@ -69,16 +84,32 @@ static phase_t s_preflight = {
 };
 
 static phase_t *s_current_phase = &s_preflight;
+static info_cat_t s_current_info_cat = FT;
+static info_cat_t s_default_info_cat = FT;
+
+static void change_display() {
+  text_layer_set_text(s_main_label, s_info_roll[s_current_info_cat].name);
+  text_layer_set_text(s_main_count, s_info_roll[s_current_info_cat].buf);
+}
 
 void mission_init(Layer *window_layer, GRect bounds) {
+  s_info_roll[FT].active = true;
+  strcpy(s_info_roll[FT].name, "FT");
+  strcpy(s_info_roll[FT].buf, "--:--");
+  
+  s_info_roll[TO].active = false;
+  strcpy(s_info_roll[TO].name, "TO");
+  
+  s_info_roll[LD].active = false;
+  strcpy(s_info_roll[LD].name, "LD");
+  
   s_main_label = configure_text_layer(window_layer, GRect(0, 60, bounds.size.w, 44), fonts_get_system_font(FONT_KEY_BITHAM_42_LIGHT), GTextAlignmentLeft);
-  text_layer_set_text(s_main_label, "FT");
-  s_main_count = configure_text_layer(window_layer, GRect(bounds.size.w * 0.36, 73, bounds.size.w * 0.64, 30), fonts_get_system_font(FONT_KEY_DROID_SERIF_28_BOLD), GTextAlignmentRight);
-  text_layer_set_text(s_main_count, "--:--");
+  s_main_count = configure_text_layer(window_layer, GRect(bounds.size.w * 0.47, 73, bounds.size.w * 0.53, 30), fonts_get_system_font(FONT_KEY_DROID_SERIF_28_BOLD), GTextAlignmentRight);
+  
+  change_display();
   
   s_live_indicator = configure_text_layer(window_layer, GRect(bounds.size.w * 0.50, 65, bounds.size.w * 0.50, 9), fonts_get_system_font(FONT_KEY_GOTHIC_09), GTextAlignmentCenter);
   text_layer_set_text(s_live_indicator, "in flight");
-  
   s_layer_live_indicator = text_layer_get_layer(s_live_indicator);
   layer_set_hidden(s_layer_live_indicator, true);
 }
@@ -100,10 +131,35 @@ void mission_next() {
     s_current_phase = s_current_phase->next();
     if (s_current_phase->start != NULL) {
       s_current_phase->start(tick);
+      mission_update(tick);
     }
   }
 }
 
 void mission_previous() {
   // TODO 
+}
+
+static void switch_to_default(void *data) {
+  s_current_info_cat = s_default_info_cat;
+  change_display();
+}
+
+void mission_switch_display() {
+  static AppTimer *s_display_timer = NULL;
+  if (s_display_timer != NULL) {
+    app_timer_cancel(s_display_timer);
+  }
+  
+  info_cat_t next = s_current_info_cat;
+  do {
+     next = (next + 1) % INFO_ROLL_SIZE;
+  } while (!s_info_roll[next].active);
+  s_current_info_cat = next;
+  
+  change_display();
+  
+  if (s_current_info_cat != s_default_info_cat) {
+    s_display_timer = app_timer_register(10000, switch_to_default, NULL);
+  }
 }

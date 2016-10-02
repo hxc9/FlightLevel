@@ -13,3 +13,20 @@ TextLayer *configure_text_layer(Layer *window_layer, GRect box, GFont font, GTex
   
   return layer;
 }
+
+void format_duration_hhmm(time_t time_in_s, char buffer[], int size) {
+  int minutes = (int)time_in_s / 60 % 60;
+  int hours = (int)time_in_s / 3600 % 1000;
+  
+  if (hours > 99) {
+    hours = 99;
+    minutes = 99;
+  }
+  
+  snprintf(buffer, size, "%d:%02d", hours, minutes);
+}
+
+void format_time_hhmm(time_t time_in_s, char buffer[], int size) {
+  struct tm *tick_time_z = gmtime(&time_in_s);
+  strftime(buffer, size, "%H:%M", tick_time_z);
+}
