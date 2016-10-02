@@ -1,6 +1,6 @@
 #include <pebble.h>
 #include "clock.h"
-#include "utils.h"
+#include "../utils.h"
 
 static TextLayer *s_date, *s_time;
 

@@ -1,6 +1,6 @@
 #include <pebble.h>
 #include "et.h"
-#include "utils.h"
+#include "../utils.h"
 
 static time_t s_et_start;
 

@@ -1,6 +1,6 @@
 #include <pebble.h>
 #include "mission.h"
-#include "utils.h"
+#include "../../utils.h"
 #define PHASE_COUNT 3
 #define INFO_COUNT 3
 

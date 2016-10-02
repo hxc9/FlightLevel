@@ -1,9 +1,9 @@
 #include <pebble.h>
-#include "et.h"
-#include "battery.h"
-#include "clock.h"
-#include "endurance.h"
-#include "mission.h"
+#include "components/et.h"
+#include "components/battery.h"
+#include "components/clock.h"
+#include "components/endurance.h"
+#include "components/mission/mission.h"
 
 static Window *s_main_window;
 
