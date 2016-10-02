@@ -1,6 +1,7 @@
 #include <pebble.h>
 #include "endurance.h"
 
+// TODO implement logic (requires menu)
 Layer *s_endurance_layer;
 static int s_endurance_level = 100;
 

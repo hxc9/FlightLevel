@@ -11,14 +11,35 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   time_t tick = time(NULL);
   update_clock(tick);
   update_elapsed_time(tick);
+  mission_update(tick);
 }
 
 static void down_single_click_handler(ClickRecognizerRef recognizer, void *context) {
   start_elapsed_time();
 }
 
+static void select_single_click_handler(ClickRecognizerRef recognizer, void *context) {
+  // TODO switch between mission displays
+}
+
+static void up_single_click_handler(ClickRecognizerRef recognizer, void *context) {
+  mission_next();
+}
+
+static void up_long_click_handler(ClickRecognizerRef recognizer,  void *context) {
+  mission_previous();
+}
+
+static void back_single_click_handler(ClickRecognizerRef recognizer, void *context) {
+  // TODO menu / inhibit app close
+}
+
 static void config_provider(Window *window) {
   window_single_click_subscribe(BUTTON_ID_DOWN, down_single_click_handler);
+  window_single_click_subscribe(BUTTON_ID_SELECT, select_single_click_handler);
+  window_single_click_subscribe(BUTTON_ID_UP, up_single_click_handler);
+  window_long_click_subscribe(BUTTON_ID_UP, 700, up_long_click_handler, NULL);
+  window_single_click_subscribe(BUTTON_ID_BACK, back_single_click_handler);
 }
 
 static void main_window_load(Window *window) {
