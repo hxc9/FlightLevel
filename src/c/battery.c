@@ -11,7 +11,7 @@ void battery_init(Layer *window_layer, GRect bounds) {
 }
 
 void battery_destroy() {
-  
+  layer_destroy(s_battery_layer);
 }
 
 void battery_update_proc(Layer *layer, GContext *ctx) {

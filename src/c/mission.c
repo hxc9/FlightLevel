@@ -138,6 +138,7 @@ void mission_init(Layer *window_layer, GRect bounds) {
 void mission_destroy() {
   text_layer_destroy(s_main_label);
   text_layer_destroy(s_main_count);
+  text_layer_destroy(s_live_indicator);
 }
 
 void mission_update(time_t tick) {
@@ -147,18 +148,14 @@ void mission_update(time_t tick) {
 }
 
 void mission_next() {
-  APP_LOG(APP_LOG_LEVEL_INFO, "Calling mission next with phase %d", s_current_phase);
   time_t tick = time(NULL);
   if (s_current_phase < PHASE_COUNT - 1) {
-    APP_LOG(APP_LOG_LEVEL_INFO, "Calling next on phase %d", s_current_phase);
     if (s_phase_list[s_current_phase].next != NULL) {
       s_phase_list[s_current_phase].next();
     }
     s_current_phase++;
-    APP_LOG(APP_LOG_LEVEL_INFO, "Next phase %d", s_current_phase);
     if (s_phase_list[s_current_phase].start != NULL) {
       s_phase_list[s_current_phase].start(tick);
-      APP_LOG(APP_LOG_LEVEL_INFO, "Calling start on phase %d", s_current_phase);
       mission_update(tick);
     }
   }
