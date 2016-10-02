@@ -1,13 +1,16 @@
 #include <pebble.h>
 #include "mission.h"
 #include "../utils.h"
-#define PHASE_COUNT 3
-#define INFO_COUNT 3
+#define PHASE_COUNT 5
+#define INFO_COUNT 5
 
 static TextLayer *s_main_label;
 static TextLayer *s_main_count;
+static Layer *s_main_count_layer;
 static TextLayer *s_live_indicator;
 static Layer *s_layer_live_indicator;
+
+static AppTimer *s_display_timer = NULL;
 
 typedef struct Info {
   bool active;
@@ -17,11 +20,11 @@ typedef struct Info {
 } info_t;
 
 typedef enum Info_category {
-  FT, TO, LD
+  FLIGHT_TIME, OFF_BLOCK, TAKE_OFF, LANDING, ON_BLOCK
 } info_cat_t;
 
 typedef enum Phase_type {
-  PREFLIGHT, INFLIGHT, POSTFLIGHT
+  PREFLIGHT, TAXI_DEP, INFLIGHT, TAXI_ARR, POSTFLIGHT
 } phase_type_t;
 
 static info_t s_info_roll[INFO_COUNT];
@@ -31,39 +34,68 @@ typedef struct Phase {
   void (*start)(time_t tick);
   void (*cancel)();
   void (*update)(time_t tick);
-  void (*end)(time_t tick);
 } phase_t;
 
 static phase_t s_phase_list[PHASE_COUNT];
 
-static void post_start(time_t tick) {
-  s_info_roll[LD].timestamp = tick;
-  format_time_hhmm(tick, s_info_roll[LD].buf, sizeof(s_info_roll[LD].buf));
-  
-  time_t flight_time = s_info_roll[LD].timestamp - s_info_roll[TO].timestamp;
-  format_duration_hhmm(flight_time, s_info_roll[FT].buf, sizeof(s_info_roll[FT].buf));
-  
-  s_info_roll[LD].active = true;
-  text_layer_set_background_color(s_main_count, GColorWhite);
-  text_layer_set_text_color(s_main_count, GColorBlack);
+static phase_type_t s_current_phase = PREFLIGHT;
+
+static info_cat_t s_current_info_cat = FLIGHT_TIME;
+static info_cat_t s_default_info_cat = FLIGHT_TIME;
+
+static void change_display() {
+  text_layer_set_text(s_main_label, s_info_roll[s_current_info_cat].name);
+  text_layer_set_text(s_main_count, s_info_roll[s_current_info_cat].buf);
 }
 
-static void post_cancel() {
-  s_info_roll[LD].active = false;
-  text_layer_set_background_color(s_main_count, GColorClear);
-  text_layer_set_text_color(s_main_count, GColorWhite);
-}
+/* -------------------------------------------------------------
+                Flight phases implementation
+   ------------------------------------------------------------- */
 
-static phase_t s_postflight = {
+// Pre-flight phase definitions
+
+static phase_t s_preflight = {
   .next = NULL,
-  .start = &post_start,
-  .cancel = &post_cancel,
-  .update = NULL
+  .start = NULL,
+  .update = NULL,
+  .cancel = NULL
 };
 
+// Departure taxi phase definition
+
+static void taxi_dep_start(time_t tick) {
+  s_info_roll[OFF_BLOCK].timestamp = tick;
+  format_time_hhmm(tick, s_info_roll[OFF_BLOCK].buf, sizeof(s_info_roll[OFF_BLOCK].buf));
+  s_info_roll[OFF_BLOCK].active = true;
+}
+
+static void taxi_dep_update(time_t tick) {
+  static bool tick_tock = false;
+  tick_tock = !tick_tock;
+  layer_set_hidden(s_main_count_layer, tick_tock);
+}
+
+static void taxi_dep_next() {
+  layer_set_hidden(s_main_count_layer, false);
+}
+
+static void taxi_dep_cancel() {
+  s_info_roll[OFF_BLOCK].active = false;
+  layer_set_hidden(s_main_count_layer, false);
+}
+
+static phase_t s_taxi_dep = {
+  .next = &taxi_dep_next,
+  .start = &taxi_dep_start,
+  .update = &taxi_dep_update,
+  .cancel = &taxi_dep_cancel
+};
+
+// In-flight phase definitions
+
 static void ft_update(time_t tick) {
-  time_t flight_time = tick - s_info_roll[TO].timestamp;
-  format_duration_hhmm(flight_time, s_info_roll[FT].buf, sizeof(s_info_roll[FT].buf));
+  time_t flight_time = tick - s_info_roll[TAKE_OFF].timestamp;
+  format_duration_hhmm(flight_time, s_info_roll[FLIGHT_TIME].buf, sizeof(s_info_roll[FLIGHT_TIME].buf));
   
   static bool tick_tock = false;
   tick_tock = !tick_tock;
@@ -71,14 +103,14 @@ static void ft_update(time_t tick) {
 }
 
 static void ft_start(time_t tick) {
-  s_info_roll[TO].timestamp = tick;
-  format_time_hhmm(tick, s_info_roll[TO].buf, sizeof(s_info_roll[TO].buf));
-  s_info_roll[TO].active = true;
+  s_info_roll[TAKE_OFF].timestamp = tick;
+  format_time_hhmm(tick, s_info_roll[TAKE_OFF].buf, sizeof(s_info_roll[TAKE_OFF].buf));
+  s_info_roll[TAKE_OFF].active = true;
 }
 
 static void ft_cancel() {
-  s_info_roll[TO].active = false;
-  strcpy(s_info_roll[FT].buf, "--:--");
+  s_info_roll[TAKE_OFF].active = false;
+  strcpy(s_info_roll[TAKE_OFF].buf, "--:--");
 }
 
 static void ft_next() {
@@ -92,40 +124,97 @@ static phase_t s_inflight = {
   .update = &ft_update
 };
 
-static phase_t s_preflight = {
-  .next = NULL,
-  .start = NULL,
-  .update = NULL,
-  .end = NULL
+
+// Arrival taxi phase definitions
+
+static void taxi_arr_start(time_t tick) {
+  s_info_roll[LANDING].timestamp = tick;
+  format_time_hhmm(tick, s_info_roll[LANDING].buf, sizeof(s_info_roll[LANDING].buf));
+  
+  time_t flight_time = s_info_roll[LANDING].timestamp - s_info_roll[TAKE_OFF].timestamp;
+  format_duration_hhmm(flight_time, s_info_roll[FLIGHT_TIME].buf, sizeof(s_info_roll[FLIGHT_TIME].buf));
+  
+  s_info_roll[LANDING].active = true;
+  s_current_info_cat = LANDING;
+  s_default_info_cat = LANDING;
+  text_layer_set_background_color(s_main_count, GColorWhite);
+  text_layer_set_text_color(s_main_count, GColorBlack);
+  app_timer_cancel(s_display_timer);
+  change_display();
+}
+
+static void taxi_arr_update(time_t tick) {
+  static bool tick_tock = false;
+  tick_tock = !tick_tock;
+  layer_set_hidden(s_main_count_layer, tick_tock);
+}
+
+static void taxi_arr_next() {
+  layer_set_hidden(s_main_count_layer, false);
+}
+
+static void taxi_arr_cancel() {
+  s_info_roll[LANDING].active = false;
+  s_default_info_cat = FLIGHT_TIME;
+  text_layer_set_background_color(s_main_count, GColorClear);
+  text_layer_set_text_color(s_main_count, GColorWhite);
+  app_timer_cancel(s_display_timer);
+  layer_set_hidden(s_main_count_layer, false);
+  change_display();
+}
+
+static phase_t s_taxi_arr = {
+  .next = &taxi_arr_next,
+  .start = &taxi_arr_start,
+  .cancel = &taxi_arr_cancel,
+  .update = &taxi_arr_update
 };
 
-static phase_type_t s_current_phase = PREFLIGHT;
+// Post-flight phase definition
 
-static info_cat_t s_current_info_cat = FT;
-static info_cat_t s_default_info_cat = FT;
-
-static void change_display() {
-  text_layer_set_text(s_main_label, s_info_roll[s_current_info_cat].name);
-  text_layer_set_text(s_main_count, s_info_roll[s_current_info_cat].buf);
+static void postflight_start(time_t tick) {
+  s_info_roll[ON_BLOCK].timestamp = tick;
+  format_time_hhmm(tick, s_info_roll[ON_BLOCK].buf, sizeof(s_info_roll[ON_BLOCK].buf));
+  s_info_roll[ON_BLOCK].active = true;
 }
+
+static void postflight_cancel() {
+  s_info_roll[ON_BLOCK].active = false;
+}
+
+static phase_t s_postflight = {
+  .next = NULL,
+  .start = &postflight_start,
+  .update = NULL,
+  .cancel = &postflight_cancel
+};
+
+/* -------------------------------------------------------------
+              Display and update logic
+   ------------------------------------------------------------- */
 
 void mission_init(Layer *window_layer, GRect bounds) {
   s_phase_list[PREFLIGHT] = s_preflight;
+  s_phase_list[TAXI_DEP] = s_taxi_dep;
   s_phase_list[INFLIGHT] = s_inflight;
+  s_phase_list[TAXI_ARR] = s_taxi_arr;
   s_phase_list[POSTFLIGHT] = s_postflight;
   
-  s_info_roll[FT].active = true;
-  strcpy(s_info_roll[FT].name, "FT");
-  strcpy(s_info_roll[FT].buf, "--:--");
+  s_info_roll[FLIGHT_TIME].active = true;
+  strcpy(s_info_roll[FLIGHT_TIME].name, "FT");
+  strcpy(s_info_roll[FLIGHT_TIME].buf, "--:--");
   
-  s_info_roll[TO].active = false;
-  strcpy(s_info_roll[TO].name, "TO");
+  strcpy(s_info_roll[OFF_BLOCK].name, "OF");
   
-  s_info_roll[LD].active = false;
-  strcpy(s_info_roll[LD].name, "LD");
+  strcpy(s_info_roll[TAKE_OFF].name, "TO");
+  
+  strcpy(s_info_roll[LANDING].name, "LD");
+  
+  strcpy(s_info_roll[ON_BLOCK].name, "ON");
   
   s_main_label = configure_text_layer(window_layer, GRect(0, 60, bounds.size.w, 44), fonts_get_system_font(FONT_KEY_BITHAM_42_LIGHT), GTextAlignmentLeft);
   s_main_count = configure_text_layer(window_layer, GRect(bounds.size.w * 0.47, 73, bounds.size.w * 0.53, 30), fonts_get_system_font(FONT_KEY_DROID_SERIF_28_BOLD), GTextAlignmentRight);
+  s_main_count_layer = text_layer_get_layer(s_main_count);
   
   change_display();
   
@@ -160,8 +249,6 @@ void mission_next() {
     }
   }
 }
-
-static AppTimer *s_display_timer = NULL;
 
 static void switch_to_default(void *data) {
   s_current_info_cat = s_default_info_cat;
