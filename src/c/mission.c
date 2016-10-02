@@ -1,6 +1,8 @@
 #include <pebble.h>
 #include "mission.h"
 #include "utils.h"
+#define PHASE_COUNT 3
+#define INFO_COUNT 3
 
 static TextLayer *s_main_label;
 static TextLayer *s_main_count;
@@ -18,15 +20,21 @@ typedef enum Info_category {
   FT, TO, LD
 } info_cat_t;
 
-static info_t s_info_roll[3];
-static const int INFO_ROLL_SIZE = sizeof(s_info_roll) / sizeof(info_t);
+typedef enum Phase_type {
+  PREFLIGHT, INFLIGHT, POSTFLIGHT
+} phase_type_t;
+
+static info_t s_info_roll[INFO_COUNT];
 
 typedef struct Phase {
-  struct Phase *(*next)();
+  void (*next)();
   void (*start)(time_t tick);
+  void (*cancel)();
   void (*update)(time_t tick);
   void (*end)(time_t tick);
 } phase_t;
+
+static phase_t s_phase_list[PHASE_COUNT];
 
 static void post_start(time_t tick) {
   s_info_roll[LD].timestamp = tick;
@@ -40,9 +48,16 @@ static void post_start(time_t tick) {
   text_layer_set_text_color(s_main_count, GColorBlack);
 }
 
+static void post_cancel() {
+  s_info_roll[LD].active = false;
+  text_layer_set_background_color(s_main_count, GColorClear);
+  text_layer_set_text_color(s_main_count, GColorWhite);
+}
+
 static phase_t s_postflight = {
   .next = NULL,
   .start = &post_start,
+  .cancel = &post_cancel,
   .update = NULL
 };
 
@@ -61,29 +76,31 @@ static void ft_start(time_t tick) {
   s_info_roll[TO].active = true;
 }
 
-static phase_t *ft_next() {
+static void ft_cancel() {
+  s_info_roll[TO].active = false;
+  strcpy(s_info_roll[FT].buf, "--:--");
+}
+
+static void ft_next() {
   layer_set_hidden(s_layer_live_indicator, true);
-  return &s_postflight;
 }
 
 static phase_t s_inflight = {
   .next = &ft_next,
-  .start = ft_start,
-  .update = ft_update
+  .start = &ft_start,
+  .cancel = &ft_cancel,
+  .update = &ft_update
 };
 
-static phase_t *pre_next() {
-  return &s_inflight;
-}
-
 static phase_t s_preflight = {
-  .next = &pre_next,
+  .next = NULL,
   .start = NULL,
   .update = NULL,
   .end = NULL
 };
 
-static phase_t *s_current_phase = &s_preflight;
+static phase_type_t s_current_phase = PREFLIGHT;
+
 static info_cat_t s_current_info_cat = FT;
 static info_cat_t s_default_info_cat = FT;
 
@@ -93,6 +110,10 @@ static void change_display() {
 }
 
 void mission_init(Layer *window_layer, GRect bounds) {
+  s_phase_list[PREFLIGHT] = s_preflight;
+  s_phase_list[INFLIGHT] = s_inflight;
+  s_phase_list[POSTFLIGHT] = s_postflight;
+  
   s_info_roll[FT].active = true;
   strcpy(s_info_roll[FT].name, "FT");
   strcpy(s_info_roll[FT].buf, "--:--");
@@ -120,40 +141,58 @@ void mission_destroy() {
 }
 
 void mission_update(time_t tick) {
-  if (s_current_phase->update != NULL) {
-    s_current_phase->update(tick);
+  if (s_phase_list[s_current_phase].update != NULL) {
+    s_phase_list[s_current_phase].update(tick);
   }
 }
 
 void mission_next() {
+  APP_LOG(APP_LOG_LEVEL_INFO, "Calling mission next with phase %d", s_current_phase);
   time_t tick = time(NULL);
-  if (s_current_phase->next != NULL) {
-    s_current_phase = s_current_phase->next();
-    if (s_current_phase->start != NULL) {
-      s_current_phase->start(tick);
+  if (s_current_phase < PHASE_COUNT - 1) {
+    APP_LOG(APP_LOG_LEVEL_INFO, "Calling next on phase %d", s_current_phase);
+    if (s_phase_list[s_current_phase].next != NULL) {
+      s_phase_list[s_current_phase].next();
+    }
+    s_current_phase++;
+    APP_LOG(APP_LOG_LEVEL_INFO, "Next phase %d", s_current_phase);
+    if (s_phase_list[s_current_phase].start != NULL) {
+      s_phase_list[s_current_phase].start(tick);
+      APP_LOG(APP_LOG_LEVEL_INFO, "Calling start on phase %d", s_current_phase);
       mission_update(tick);
     }
   }
 }
 
-void mission_previous() {
-  // TODO 
-}
+static AppTimer *s_display_timer = NULL;
 
 static void switch_to_default(void *data) {
   s_current_info_cat = s_default_info_cat;
   change_display();
 }
 
+void mission_previous() {
+  if (s_phase_list[s_current_phase].cancel == NULL) {
+    return;
+  }
+  
+  s_phase_list[s_current_phase].cancel();
+  s_current_phase--;
+  if (!s_info_roll[s_current_info_cat].active) {
+    app_timer_cancel(s_display_timer);
+    switch_to_default(NULL);
+  }
+  mission_update(time(NULL));
+}
+
 void mission_switch_display() {
-  static AppTimer *s_display_timer = NULL;
   if (s_display_timer != NULL) {
     app_timer_cancel(s_display_timer);
   }
   
   info_cat_t next = s_current_info_cat;
   do {
-     next = (next + 1) % INFO_ROLL_SIZE;
+     next = (next + 1) % INFO_COUNT;
   } while (!s_info_roll[next].active);
   s_current_info_cat = next;
   
