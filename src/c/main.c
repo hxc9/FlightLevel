@@ -4,6 +4,7 @@
 #include "components/clock.h"
 #include "components/endurance.h"
 #include "components/mission.h"
+#include "windows/flight_menu.h"
 
 static Window *s_main_window;
 
@@ -31,7 +32,7 @@ static void up_long_click_handler(ClickRecognizerRef recognizer,  void *context)
 }
 
 static void back_single_click_handler(ClickRecognizerRef recognizer, void *context) {
-  // TODO menu / inhibit app close
+  flight_menu_window_push();
 }
 
 static void config_provider(Window *window) {

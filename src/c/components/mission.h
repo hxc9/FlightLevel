@@ -8,3 +8,6 @@ void mission_update(time_t tick);
 void mission_next();
 void mission_previous();
 void mission_switch_display();
+
+bool mission_checks_are_inhibited();
+void mission_checks_inhibit(bool inhibit);

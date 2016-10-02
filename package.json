@@ -11,6 +11,12 @@
         "resources": {
             "media": [
                 {
+                    "file": "images/confirm_small.png",
+                    "name": "CONFIRM_SMALL",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
                     "file": "images/tick.png",
                     "name": "TICK",
                     "targetPlatforms": null,
