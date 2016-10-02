@@ -2,7 +2,7 @@
 #include "mission.h"
 #include "../utils.h"
 #define PHASE_COUNT 5
-#define INFO_COUNT 5
+#define INFO_COUNT 6
 
 static TextLayer *s_main_label;
 static TextLayer *s_main_count;
@@ -20,7 +20,7 @@ typedef struct Info {
 } info_t;
 
 typedef enum Info_category {
-  FLIGHT_TIME, OFF_BLOCK, TAKE_OFF, LANDING, ON_BLOCK
+  FLIGHT_TIME, BLOCK_TIME, OFF_BLOCK, TAKE_OFF, LANDING, ON_BLOCK
 } info_cat_t;
 
 typedef enum Phase_type {
@@ -176,10 +176,15 @@ static void postflight_start(time_t tick) {
   s_info_roll[ON_BLOCK].timestamp = tick;
   format_time_hhmm(tick, s_info_roll[ON_BLOCK].buf, sizeof(s_info_roll[ON_BLOCK].buf));
   s_info_roll[ON_BLOCK].active = true;
+  
+  time_t flight_time = s_info_roll[ON_BLOCK].timestamp - s_info_roll[OFF_BLOCK].timestamp;
+  format_duration_hhmm(flight_time, s_info_roll[BLOCK_TIME].buf, sizeof(s_info_roll[BLOCK_TIME].buf));
+  s_info_roll[BLOCK_TIME].active = true;
 }
 
 static void postflight_cancel() {
   s_info_roll[ON_BLOCK].active = false;
+  s_info_roll[BLOCK_TIME].active = false;
 }
 
 static phase_t s_postflight = {
@@ -203,6 +208,8 @@ void mission_init(Layer *window_layer, GRect bounds) {
   s_info_roll[FLIGHT_TIME].active = true;
   strcpy(s_info_roll[FLIGHT_TIME].name, "FT");
   strcpy(s_info_roll[FLIGHT_TIME].buf, "--:--");
+  
+  strcpy(s_info_roll[BLOCK_TIME].name, "BT");
   
   strcpy(s_info_roll[OFF_BLOCK].name, "OF");
   
