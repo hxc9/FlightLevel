@@ -3,7 +3,7 @@
 #include "components/battery.h"
 #include "components/clock.h"
 #include "components/endurance.h"
-#include "components/mission/mission.h"
+#include "components/mission.h"
 
 static Window *s_main_window;
 
