@@ -106,7 +106,7 @@ static phase_t s_taxi_dep = {
 // In-flight phase definitions
 
 static void ft_check_reminder(void *data) {
-  vibes_short_pulse();
+  vibes_double_pulse();
   dialog_choice_window_push();
   s_vibes_timer = app_timer_register(CRUISE_CHECK_PERIOD_IN_MINUTES * SECONDS_PER_MINUTE * 1000 , ft_check_reminder, NULL);
 }
