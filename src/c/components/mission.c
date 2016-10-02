@@ -1,8 +1,11 @@
 #include <pebble.h>
 #include "mission.h"
 #include "../utils.h"
+#include "../windows/check_msg.h"
+
 #define PHASE_COUNT 5
 #define INFO_COUNT 6
+#define CRUISE_CHECK_PERIOD_IN_MINUTES 15
 
 static TextLayer *s_main_label;
 static TextLayer *s_main_count;
@@ -11,6 +14,7 @@ static TextLayer *s_live_indicator;
 static Layer *s_layer_live_indicator;
 
 static AppTimer *s_display_timer = NULL;
+static AppTimer *s_vibes_timer = NULL;
 
 typedef struct Info {
   bool active;
@@ -63,10 +67,16 @@ static phase_t s_preflight = {
 
 // Departure taxi phase definition
 
+static void taxi_dep_reminder(void *data) {
+  vibes_short_pulse();
+  s_vibes_timer = app_timer_register(30000, taxi_dep_reminder, NULL);
+}
+
 static void taxi_dep_start(time_t tick) {
   s_info_roll[OFF_BLOCK].timestamp = tick;
   format_time_hhmm(tick, s_info_roll[OFF_BLOCK].buf, sizeof(s_info_roll[OFF_BLOCK].buf));
   s_info_roll[OFF_BLOCK].active = true;
+  s_vibes_timer = app_timer_register(30000, taxi_dep_reminder, NULL);
 }
 
 static void taxi_dep_update(time_t tick) {
@@ -77,11 +87,13 @@ static void taxi_dep_update(time_t tick) {
 
 static void taxi_dep_next() {
   layer_set_hidden(s_main_count_layer, false);
+  app_timer_cancel(s_vibes_timer);
 }
 
 static void taxi_dep_cancel() {
   s_info_roll[OFF_BLOCK].active = false;
   layer_set_hidden(s_main_count_layer, false);
+  app_timer_cancel(s_vibes_timer);
 }
 
 static phase_t s_taxi_dep = {
@@ -92,6 +104,12 @@ static phase_t s_taxi_dep = {
 };
 
 // In-flight phase definitions
+
+static void ft_check_reminder(void *data) {
+  vibes_short_pulse();
+  dialog_choice_window_push();
+  s_vibes_timer = app_timer_register(CRUISE_CHECK_PERIOD_IN_MINUTES * SECONDS_PER_MINUTE * 1000 , ft_check_reminder, NULL);
+}
 
 static void ft_update(time_t tick) {
   time_t flight_time = tick - s_info_roll[TAKE_OFF].timestamp;
@@ -106,15 +124,18 @@ static void ft_start(time_t tick) {
   s_info_roll[TAKE_OFF].timestamp = tick;
   format_time_hhmm(tick, s_info_roll[TAKE_OFF].buf, sizeof(s_info_roll[TAKE_OFF].buf));
   s_info_roll[TAKE_OFF].active = true;
+  s_vibes_timer = app_timer_register(CRUISE_CHECK_PERIOD_IN_MINUTES * SECONDS_PER_MINUTE * 1000 , ft_check_reminder, NULL);
 }
 
 static void ft_cancel() {
   s_info_roll[TAKE_OFF].active = false;
   strcpy(s_info_roll[TAKE_OFF].buf, "--:--");
+  app_timer_cancel(s_vibes_timer);
 }
 
 static void ft_next() {
   layer_set_hidden(s_layer_live_indicator, true);
+  app_timer_cancel(s_vibes_timer);
 }
 
 static phase_t s_inflight = {
@@ -126,6 +147,11 @@ static phase_t s_inflight = {
 
 
 // Arrival taxi phase definitions
+
+static void taxi_arr_reminder(void *data) {
+  vibes_short_pulse();
+  s_vibes_timer = app_timer_register(60000, taxi_arr_reminder, NULL);
+}
 
 static void taxi_arr_start(time_t tick) {
   s_info_roll[LANDING].timestamp = tick;
@@ -141,6 +167,8 @@ static void taxi_arr_start(time_t tick) {
   text_layer_set_text_color(s_main_count, GColorBlack);
   app_timer_cancel(s_display_timer);
   change_display();
+  
+  s_vibes_timer = app_timer_register(60000, taxi_arr_reminder, NULL);
 }
 
 static void taxi_arr_update(time_t tick) {
@@ -151,6 +179,7 @@ static void taxi_arr_update(time_t tick) {
 
 static void taxi_arr_next() {
   layer_set_hidden(s_main_count_layer, false);
+  app_timer_cancel(s_vibes_timer);
 }
 
 static void taxi_arr_cancel() {
@@ -161,6 +190,8 @@ static void taxi_arr_cancel() {
   app_timer_cancel(s_display_timer);
   layer_set_hidden(s_main_count_layer, false);
   change_display();
+  
+  app_timer_cancel(s_vibes_timer);
 }
 
 static phase_t s_taxi_arr = {
