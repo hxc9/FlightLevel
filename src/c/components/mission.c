@@ -325,15 +325,19 @@ void mission_previous() {
   mission_update(time(NULL));
 }
 
-void mission_switch_display() {
+void mission_switch_display(bool to_flight_time) {
   if (s_display_timer != NULL) {
     app_timer_cancel(s_display_timer);
   }
   
   info_cat_t next = s_current_info_cat;
-  do {
-     next = (next + 1) % INFO_COUNT;
-  } while (!s_info_roll[next].active);
+  if (to_flight_time) {
+    next = FLIGHT_TIME;
+  } else {
+    do {
+       next = (next + 1) % INFO_COUNT;
+    } while (!s_info_roll[next].active);
+  }
   s_current_info_cat = next;
   
   change_display();
