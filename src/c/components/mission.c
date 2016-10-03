@@ -50,6 +50,8 @@ static phase_type_t s_current_phase = PREFLIGHT;
 static info_cat_t s_current_info_cat = FLIGHT_TIME;
 static info_cat_t s_default_info_cat = FLIGHT_TIME;
 
+static void switch_to_default(void *data);
+
 static void change_display() {
   text_layer_set_text(s_main_label, s_info_roll[s_current_info_cat].name);
   text_layer_set_text(s_main_count, s_info_roll[s_current_info_cat].buf);
@@ -80,6 +82,10 @@ static void taxi_dep_start(time_t tick) {
   format_time_hhmm(tick, s_info_roll[OFF_BLOCK].buf, sizeof(s_info_roll[OFF_BLOCK].buf));
   s_info_roll[OFF_BLOCK].active = true;
   s_vibes_timer = app_timer_register(30000, taxi_dep_reminder, NULL);
+  
+  s_current_info_cat = OFF_BLOCK;
+  s_display_timer = app_timer_register(3000, switch_to_default, NULL);
+  change_display();
 }
 
 static void taxi_dep_update(time_t tick) {
@@ -130,6 +136,10 @@ static void ft_start(time_t tick) {
   if (!s_checks_inhibited) {
     s_checks_timer = app_timer_register(CRUISE_CHECK_PERIOD_IN_MINUTES * SECONDS_PER_MINUTE * 1000 , ft_check_reminder, NULL);
   }
+  
+  s_current_info_cat = TAKE_OFF;
+  s_display_timer = app_timer_register(3000, switch_to_default, NULL);
+  change_display();
 }
 
 static void ft_cancel() {
@@ -229,6 +239,10 @@ static void postflight_start(time_t tick) {
   time_t flight_time = s_info_roll[ON_BLOCK].timestamp - s_info_roll[OFF_BLOCK].timestamp;
   format_duration_hhmm(flight_time, s_info_roll[BLOCK_TIME].buf, sizeof(s_info_roll[BLOCK_TIME].buf));
   s_info_roll[BLOCK_TIME].active = true;
+  
+  s_current_info_cat = ON_BLOCK;
+  s_display_timer = app_timer_register(3000, switch_to_default, NULL);
+  change_display();
 }
 
 static void postflight_cancel() {
