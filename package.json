@@ -11,6 +11,12 @@
         "resources": {
             "media": [
                 {
+                    "file": "images/gas.png",
+                    "name": "GAS",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
                     "file": "images/confirm_small.png",
                     "name": "CONFIRM_SMALL",
                     "targetPlatforms": null,

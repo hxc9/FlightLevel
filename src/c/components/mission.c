@@ -127,7 +127,9 @@ static void ft_start(time_t tick) {
   s_info_roll[TAKE_OFF].timestamp = tick;
   format_time_hhmm(tick, s_info_roll[TAKE_OFF].buf, sizeof(s_info_roll[TAKE_OFF].buf));
   s_info_roll[TAKE_OFF].active = true;
-  s_checks_timer = app_timer_register(CRUISE_CHECK_PERIOD_IN_MINUTES * SECONDS_PER_MINUTE * 1000 , ft_check_reminder, NULL);
+  if (!s_checks_inhibited) {
+    s_checks_timer = app_timer_register(CRUISE_CHECK_PERIOD_IN_MINUTES * SECONDS_PER_MINUTE * 1000 , ft_check_reminder, NULL);
+  }
 }
 
 static void ft_cancel() {
