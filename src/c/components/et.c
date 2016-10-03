@@ -30,6 +30,10 @@ void update_elapsed_time(time_t tick) {
   static char et_buffer[] = "00:00";
   snprintf(et_buffer, sizeof(et_buffer), "%d:%02d", minutes, seconds);
   text_layer_set_text(s_counter, et_buffer);
+  
+  if (elapsed_time > 60 * 100) {
+    text_layer_set_text(s_start_minute, "");
+  }
 }
 
 void start_elapsed_time() {
