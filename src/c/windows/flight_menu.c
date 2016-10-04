@@ -9,7 +9,7 @@ static GBitmap *s_check_bitmap, *s_gas_bitmap;
 
 static uint16_t get_num_rows_callback(MenuLayer *menu_layer, 
                                       uint16_t section_index, void *context) {
-  const uint16_t num_rows = 3;
+  const uint16_t num_rows = 4;
   return num_rows;
 }
 
@@ -24,6 +24,9 @@ static void draw_row_callback(GContext *ctx, const Layer *cell_layer,
       break;
     case 2:
       menu_cell_basic_draw(ctx, cell_layer, "Endurance", "at take-off", s_gas_bitmap);
+      break;
+    case 3:
+      menu_cell_basic_draw(ctx, cell_layer, "Flight plan", "check closed", s_check_bitmap);
       break;
     default:
       break;
