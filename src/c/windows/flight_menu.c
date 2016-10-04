@@ -17,7 +17,7 @@ static void draw_row_callback(GContext *ctx, const Layer *cell_layer,
                                         MenuIndex *cell_index, void *context) {
   switch(cell_index->row) {
     case 0:
-      menu_cell_basic_draw(ctx, cell_layer, "Reminders", mission_checks_are_inhibited() ? "enable" : "inhibit", s_check_bitmap);
+      menu_cell_basic_draw(ctx, cell_layer, "Reminders", mission_checks_are_inhibited() ? "Enable" : "Inhibit", s_check_bitmap);
       break;
     case 1:
       menu_cell_basic_draw(ctx, cell_layer, "Exit", "long press back", s_check_bitmap);
