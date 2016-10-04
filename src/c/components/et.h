@@ -3,5 +3,5 @@
 
 void et_init(Layer *window_layer, GRect bounds);
 void et_destroy();
-void start_elapsed_time();
-void update_elapsed_time(time_t tick);
+void elapsed_time_flyback();
+void elapsed_time_update(time_t tick);

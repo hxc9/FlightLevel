@@ -14,7 +14,7 @@ void clock_destroy() {
   text_layer_destroy(s_time);
 }
 
-void update_clock(time_t tick) {
+void clock_update(time_t tick) {
   struct tm *tick_time_z = gmtime(&tick);
   
   static char s_buffer_z[6];

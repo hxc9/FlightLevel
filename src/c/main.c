@@ -10,13 +10,13 @@ static Window *s_main_window;
 
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   time_t tick = time(NULL);
-  update_clock(tick);
-  update_elapsed_time(tick);
+  clock_update(tick);
+  elapsed_time_update(tick);
   mission_update(tick);
 }
 
 static void down_single_click_handler(ClickRecognizerRef recognizer, void *context) {
-  start_elapsed_time();
+  elapsed_time_flyback();
 }
 
 static void select_single_click_handler(ClickRecognizerRef recognizer, void *context) {
@@ -82,9 +82,9 @@ static void init() {
   
   window_set_click_config_provider(s_main_window, (ClickConfigProvider) config_provider);
   
-  update_clock(time(NULL));
+  clock_update(time(NULL));
   battery_callback(battery_state_service_peek());
-  start_elapsed_time();
+  elapsed_time_flyback();
 }
 
 static void deinit() {

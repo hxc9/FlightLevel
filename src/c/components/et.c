@@ -22,7 +22,7 @@ void et_destroy() {
   text_layer_destroy(s_desc);
 }
 
-void update_elapsed_time(time_t tick) {
+void elapsed_time_update(time_t tick) {
   int elapsed_time = tick - s_et_start;
   int seconds = (int)elapsed_time % 60;
   int minutes = (int)elapsed_time / 60 % 100;
@@ -36,7 +36,7 @@ void update_elapsed_time(time_t tick) {
   }
 }
 
-void start_elapsed_time() {
+void elapsed_time_flyback() {
   s_et_start = time(NULL);
   struct tm *tick_time_z = gmtime(&s_et_start);
   
@@ -44,5 +44,5 @@ void start_elapsed_time() {
   snprintf(et_start_buffer, sizeof(et_start_buffer), "%02d", tick_time_z->tm_min);
   text_layer_set_text(s_start_minute, et_start_buffer);
   
-  update_elapsed_time(s_et_start);
+  elapsed_time_update(s_et_start);
 }
