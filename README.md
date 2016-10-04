@@ -12,7 +12,7 @@ The app main display is divided in three segments:
 Controls:
 * Up: move to next phase of flight (e.g. move from taxi to in flight just before take-off), a long press cancel the last transition and reverts to the previous phase, in case of error.
 * Select: cycle through the tracked times and duration. Long press: display flight time directly (shortcut)
-* Down: restart the stopwatch
+* Down: restart the stopwatch (flyback)
 * Back: open the menu. Long press: exit the app
 
 Parts of the code draw heavily on the examples from https://github.com/pebble-examples/ui-patterns
