@@ -4,7 +4,6 @@
 #include "../windows/check_msg.h"
 
 #define PHASE_COUNT 5
-#define INFO_COUNT 6
 #define CRUISE_CHECK_PERIOD_IN_MINUTES 15
 
 static TextLayer *s_main_label;
@@ -20,12 +19,8 @@ typedef struct Info {
   bool active;
   time_t timestamp;
   char name[3];
-  char buf[6];
+  char buf[INFO_BUFFER_SIZE];
 } info_t;
-
-typedef enum Info_category {
-  FLIGHT_TIME, BLOCK_TIME, OFF_BLOCK, TAKE_OFF, LANDING, ON_BLOCK
-} info_cat_t;
 
 typedef enum Phase_type {
   PREFLIGHT, TAXI_DEP, INFLIGHT, TAXI_ARR, POSTFLIGHT
@@ -111,12 +106,28 @@ static phase_t s_taxi_dep = {
 
 // In-flight phase definitions
 static void ft_update(time_t tick) {
-  time_t flight_time = tick - s_info_roll[TAKE_OFF].timestamp;
-  format_duration_hhmm(flight_time, s_info_roll[FLIGHT_TIME].buf, sizeof(s_info_roll[FLIGHT_TIME].buf));
+  s_info_roll[FLIGHT_TIME].timestamp = tick - s_info_roll[TAKE_OFF].timestamp;
+  format_duration_hhmm(s_info_roll[FLIGHT_TIME].timestamp, s_info_roll[FLIGHT_TIME].buf, sizeof(s_info_roll[FLIGHT_TIME].buf));
   
   static bool tick_tock = false;
   tick_tock = !tick_tock;
   layer_set_hidden(s_layer_live_indicator, tick_tock);
+  
+  if (s_info_roll[ENDURANCE].active && s_info_roll[ENDURANCE].timestamp < 45 * SECONDS_PER_MINUTE) {
+    if (!alarm_is_active(ALARM_ENDURANCE)) {
+      alarm_display(ALARM_ENDURANCE);
+      s_default_info_cat = ENDURANCE;
+      s_current_info_cat = ENDURANCE;
+      change_display();
+    }
+    layer_set_hidden(text_layer_get_layer(s_main_label), tick_tock);
+  } else if (alarm_is_active(ALARM_ENDURANCE)){
+    alarm_stop(ALARM_ENDURANCE);
+    layer_set_hidden(text_layer_get_layer(s_main_label), false);
+    s_default_info_cat = FLIGHT_TIME;
+    s_current_info_cat = FLIGHT_TIME;
+    change_display();
+  }
 }
 
 static void ft_start(time_t tick) {
@@ -126,19 +137,25 @@ static void ft_start(time_t tick) {
   alarm_start(ALARM_CRUISE_CHECK);
   
   s_current_info_cat = TAKE_OFF;
+  s_default_info_cat = FLIGHT_TIME;
   s_display_timer = app_timer_register(3000, switch_to_default, NULL);
   change_display();
 }
 
 static void ft_cancel() {
   s_info_roll[TAKE_OFF].active = false;
-  strcpy(s_info_roll[TAKE_OFF].buf, "--:--");
+  strcpy(s_info_roll[FLIGHT_TIME].buf, "--:--");
+  s_info_roll[FLIGHT_TIME].timestamp = 0;
   alarm_stop(ALARM_CRUISE_CHECK);
+  s_default_info_cat = FLIGHT_TIME;
+  layer_set_hidden(text_layer_get_layer(s_main_label), false);
 }
 
 static void ft_next() {
   layer_set_hidden(s_layer_live_indicator, true);
   alarm_stop(ALARM_CRUISE_CHECK);
+  s_default_info_cat = FLIGHT_TIME;
+  layer_set_hidden(text_layer_get_layer(s_main_label), false);
 }
 
 static phase_t s_inflight = {
@@ -238,6 +255,12 @@ static phase_t s_postflight = {
               Display and update logic
    ------------------------------------------------------------- */
 
+static void init_info_item(info_cat_t cat, const char *title) {
+  s_info_roll[cat].active = false;
+  strcpy(s_info_roll[cat].name, title);
+  s_info_roll[cat].timestamp = 0;
+}
+
 void mission_init(Layer *window_layer, GRect bounds) {
   s_phase_list[PREFLIGHT] = s_preflight;
   s_phase_list[TAXI_DEP] = s_taxi_dep;
@@ -245,19 +268,16 @@ void mission_init(Layer *window_layer, GRect bounds) {
   s_phase_list[TAXI_ARR] = s_taxi_arr;
   s_phase_list[POSTFLIGHT] = s_postflight;
   
+  init_info_item(FLIGHT_TIME, "FT");
   s_info_roll[FLIGHT_TIME].active = true;
-  strcpy(s_info_roll[FLIGHT_TIME].name, "FT");
   strcpy(s_info_roll[FLIGHT_TIME].buf, "--:--");
   
-  strcpy(s_info_roll[BLOCK_TIME].name, "BT");
-  
-  strcpy(s_info_roll[OFF_BLOCK].name, "OF");
-  
-  strcpy(s_info_roll[TAKE_OFF].name, "TO");
-  
-  strcpy(s_info_roll[LANDING].name, "LD");
-  
-  strcpy(s_info_roll[ON_BLOCK].name, "ON");
+  init_info_item(ENDURANCE, "EN");
+  init_info_item(BLOCK_TIME, "BT");
+  init_info_item(OFF_BLOCK, "OF");
+  init_info_item(TAKE_OFF, "TO");
+  init_info_item(LANDING, "LD");
+  init_info_item(ON_BLOCK, "ON");
   
   s_main_label = configure_text_layer(window_layer, GRect(0, 60, bounds.size.w, 44), fonts_get_system_font(FONT_KEY_BITHAM_42_LIGHT), GTextAlignmentLeft);
   s_main_count = configure_text_layer(window_layer, GRect(bounds.size.w * 0.47, 73, bounds.size.w * 0.53, 30), fonts_get_system_font(FONT_KEY_DROID_SERIF_28_BOLD), GTextAlignmentRight);
@@ -336,4 +356,21 @@ void mission_switch_display(bool to_flight_time) {
   if (s_current_info_cat != s_default_info_cat) {
     s_display_timer = app_timer_register(10000, switch_to_default, NULL);
   }
+}
+
+time_t mission_get_timestamp(info_cat_t category) {
+  info_t info = s_info_roll[category];
+  return info.active ? info.timestamp : 0;
+}
+
+char * mission_get_info_buffer(info_cat_t category) {
+  return s_info_roll[category].buf;
+}
+
+void mission_set_status(info_cat_t category, bool active) {
+ s_info_roll[category].active = active;
+}
+
+void mission_set_timestamp(info_cat_t category, time_t timestamp) {
+ s_info_roll[category].timestamp = timestamp;
 }

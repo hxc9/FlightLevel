@@ -11,24 +11,14 @@
         "resources": {
             "media": [
                 {
-                    "file": "images/charlie.pbi",
-                    "memoryFormat": "1Bit",
-                    "name": "CHARLIE",
+                    "file": "images/danger.png",
+                    "name": "DANGER",
                     "targetPlatforms": null,
                     "type": "bitmap"
                 },
                 {
-                    "file": "images/exit.pbi",
-                    "memoryFormat": "1Bit",
-                    "name": "EXIT",
-                    "targetPlatforms": null,
-                    "type": "bitmap"
-                },
-                {
-                    "file": "images/airplane.pbi",
-                    "memoryFormat": "1Bit",
-                    "menuIcon": true,
-                    "name": "AIRPLANE",
+                    "file": "images/tick.png",
+                    "name": "TICK",
                     "targetPlatforms": null,
                     "type": "bitmap"
                 },
@@ -40,20 +30,36 @@
                     "type": "bitmap"
                 },
                 {
+                    "file": "images/exit.pbi",
+                    "memoryFormat": "1Bit",
+                    "name": "EXIT",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
                     "file": "images/confirm_small.png",
                     "name": "CONFIRM_SMALL",
                     "targetPlatforms": null,
                     "type": "bitmap"
                 },
                 {
-                    "file": "images/tick.png",
-                    "name": "TICK",
+                    "file": "images/confirm.png",
+                    "name": "CONFIRM",
                     "targetPlatforms": null,
                     "type": "bitmap"
                 },
                 {
-                    "file": "images/confirm.png",
-                    "name": "CONFIRM",
+                    "file": "images/charlie.pbi",
+                    "memoryFormat": "1Bit",
+                    "name": "CHARLIE",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/airplane.pbi",
+                    "memoryFormat": "1Bit",
+                    "menuIcon": true,
+                    "name": "AIRPLANE",
                     "targetPlatforms": null,
                     "type": "bitmap"
                 }

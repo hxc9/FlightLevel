@@ -3,6 +3,7 @@
 #include "../components/mission.h"
 #include "check_msg.h"
 #include "time_window.h"
+#include "../components/endurance.h"
 
 static Window *s_main_window;
 static TimeWindow *s_time_window;
@@ -26,7 +27,7 @@ static void draw_row_callback(GContext *ctx, const Layer *cell_layer,
       menu_cell_basic_draw(ctx, cell_layer, "Exit", "Long-press back", s_exit_bitmap);
       break;
     case 2:
-      menu_cell_basic_draw(ctx, cell_layer, "Endurance", "not implemented/at take-off", s_gas_bitmap);
+      menu_cell_basic_draw(ctx, cell_layer, "Endurance", "Before take-off", s_gas_bitmap);
       break;
     case 3:
       menu_cell_basic_draw(ctx, cell_layer, "Flight plan", alarm_is_inhibited(ALARM_FLIGHT_PLAN) ? "Set reminder" : "Flight plan closed?", s_charlie_bitmap);
@@ -57,7 +58,7 @@ static void select_callback(struct MenuLayer *menu_layer,
       window_stack_pop_all(true);
       break;
     case 2:
-      time_window_push(s_time_window, true);
+      time_window_push(s_time_window, true, endurance_get_takeoff_value());
       break;
     case 3:
       if (alarm_is_inhibited(ALARM_FLIGHT_PLAN)) {
@@ -73,12 +74,9 @@ static void select_callback(struct MenuLayer *menu_layer,
 }
 
 
-static void time_complete_callback(TIME time, void *context) {
-
-  APP_LOG(APP_LOG_LEVEL_INFO, "Time was %d %d %d", time.digits[0], time.digits[1], time.digits[2], time.digits[3]);
-
+static void time_complete_callback(time_t time, void *context) {
+  endurance_set_takeoff_value(time);
   time_window_pop((TimeWindow*)context, true);
-
 }
 
 static void window_load(Window *window) {
@@ -106,10 +104,12 @@ static void window_load(Window *window) {
   
   layer_add_child(window_layer, menu_layer_get_layer(s_menu_layer));
   
-  TimeWindowCallbacks callbacks = {
-    .time_complete = time_complete_callback
+  TimeWindowDefinition definition = {
+    .time_complete = time_complete_callback,
+    .main_text = "ENDURANCE",
+    .sub_text = "Enter endurance at take-off (hh:mm)"
   };
-  s_time_window = time_window_create(callbacks);
+  s_time_window = time_window_create(definition);
 }
 
 static void window_unload(Window *window) {

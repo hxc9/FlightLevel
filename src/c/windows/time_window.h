@@ -3,18 +3,20 @@
 #include <pebble.h>
 
 #define TIME_WINDOW_NUM_CELLS 4
-#define TIME_WINDOW_MAX_VALUE 9
 #define TIME_WINDOW_SIZE GSize(128, 34)
 
 typedef struct {
   int digits[TIME_WINDOW_NUM_CELLS];
+  int max_values[TIME_WINDOW_NUM_CELLS];
 } TIME;
 
-typedef void (*TimeWindowComplete)(TIME time, void *context);
+typedef void (*TimeWindowComplete)(time_t duration, void *context);
 
-typedef struct TimeWindowCallbacks {
-    TimeWindowComplete time_complete;
-} TimeWindowCallbacks;
+typedef struct TimeWindowDefinition {
+  const char * main_text;
+  const char * sub_text;
+  TimeWindowComplete time_complete;
+} TimeWindowDefinition;
 
 typedef struct {
   Window *window;
@@ -22,7 +24,7 @@ typedef struct {
   Layer *selection;
   GColor highlight_color;
   StatusBarLayer *status;
-  TimeWindowCallbacks callbacks;
+  TimeWindowDefinition definition;
 
   TIME time;
   char field_buffs[TIME_WINDOW_NUM_CELLS][2];
@@ -34,7 +36,7 @@ typedef struct {
  *  time_window_callbacks: callbacks for communication
  *  returns: a pointer to a new TimeWindow structure
  */
-TimeWindow* time_window_create(TimeWindowCallbacks time_window_callbacks);
+TimeWindow* time_window_create(TimeWindowDefinition time_window_definition);
 
 /*
  * Destroys an existing TimeWindow
@@ -47,7 +49,7 @@ void time_window_destroy(TimeWindow *time_window);
  *  time_window: a pointer to the TimeWindow being pushed
  *  animated: whether to animate the push or not
  */
-void time_window_push(TimeWindow *time_window, bool animated);
+void time_window_push(TimeWindow *time_window, bool animated, time_t initial_value);
 
 /*
  * Pop the window off the stack

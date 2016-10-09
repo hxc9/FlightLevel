@@ -5,6 +5,7 @@
 typedef struct Alarm {
   bool inhibited;
   bool active;
+  bool important;
   char text[45];
   time_t delay;
   time_t hide_delay;
@@ -12,30 +13,42 @@ typedef struct Alarm {
 } alarm_t;
 
 static alarm_t s_cruise_check = {
-    .inhibited = false,
-    .active = false,
-    .text = "Cruise check reminder",
-    .delay = 15 * SECONDS_PER_MINUTE * 1000,
-    .hide_delay = 2 * SECONDS_PER_MINUTE *1000,
-    .timer = NULL
+  .inhibited = false,
+  .active = false,
+  .important = false,
+  .text = "Cruise check reminder",
+  .delay = 15 * SECONDS_PER_MINUTE * 1000,
+  .hide_delay = 2 * SECONDS_PER_MINUTE *1000,
+  .timer = NULL
+  };
+
+static alarm_t s_endurance_alarm = {
+  .inhibited = false,
+  .active = false,
+  .important = true,
+  .text = "Fuel reserve low",
+  .delay = 15 * SECONDS_PER_MINUTE * 1000,
+  .hide_delay = 15 * SECONDS_PER_MINUTE *1000,
+  .timer = NULL
   };
 
 static alarm_t s_flight_plan = {
-    .inhibited = true,
-    .active = false,
-    .text = "Have you closed your flight plan ?",
-    .delay = 5 * SECONDS_PER_MINUTE * 1000,
-    .hide_delay = 10 * SECONDS_PER_MINUTE * 1000,
-    .timer = NULL};
+  .inhibited = true,
+  .active = false,
+  .important = false,
+  .text = "Have you closed your flight plan ?",
+  .delay = 5 * SECONDS_PER_MINUTE * 1000,
+  .hide_delay = 10 * SECONDS_PER_MINUTE * 1000,
+  .timer = NULL};
 
-static alarm_t *s_alarm_defs[] = {&s_cruise_check, &s_flight_plan};
+static alarm_t *s_alarm_defs[] = {&s_cruise_check, &s_endurance_alarm, &s_flight_plan};
 
 static Window *s_main_window;
 static TextLayer *s_label_layer;
 static BitmapLayer *s_icon_layer;
 static ActionBarLayer *s_action_bar_layer;
 
-static GBitmap *s_icon_bitmap, *s_tick_bitmap;
+static GBitmap *s_icon_bitmap, *s_tick_bitmap, *s_danger_bitmap;
 
 static AppTimer *s_display_timer;
 static alarm_t *s_last_alarm;
@@ -54,6 +67,7 @@ static void window_load(Window *window) {
   GRect bounds = layer_get_bounds(window_layer);
 
   s_icon_bitmap = gbitmap_create_with_resource(RESOURCE_ID_CONFIRM);
+  s_danger_bitmap = gbitmap_create_with_resource(RESOURCE_ID_DANGER);
 
   const GEdgeInsets icon_insets = {.top = 1, .right = 28, .bottom = 66, .left = 14};
   s_icon_layer = bitmap_layer_create(grect_inset(bounds, icon_insets));
@@ -83,6 +97,7 @@ static void window_unload(Window *window) {
 
   gbitmap_destroy(s_icon_bitmap);
   gbitmap_destroy(s_tick_bitmap);
+  gbitmap_destroy(s_danger_bitmap);
 
   window_destroy(window);
   s_main_window = NULL;
@@ -95,6 +110,7 @@ static void window_expired(void *data) {
 static void window_appear(Window *window) {
   s_display_timer = app_timer_register(s_last_alarm->hide_delay, window_expired, NULL);
   text_layer_set_text(s_label_layer, s_last_alarm->text);
+  bitmap_layer_set_bitmap(s_icon_layer, s_last_alarm->important ? s_danger_bitmap : s_icon_bitmap);
 }
 
 static void window_disappear(Window *window) {
@@ -125,28 +141,36 @@ static void alarm_callback(void* data) {
     text_layer_set_text(s_label_layer, s_last_alarm->text);
     if (alarm->timer != NULL) {
       app_timer_reschedule(s_display_timer, s_last_alarm->hide_delay);
-      } else {
-      dialog_choice_window_push();
     }
+  } else {
+    dialog_choice_window_push();
   }
-  vibes_double_pulse();
+  alarm->important ? vibes_long_pulse() : vibes_double_pulse();
   alarm->timer = app_timer_register(alarm->delay, alarm_callback, alarm);
 }
 
-static void alarm_do_start(alarm_t *alarm) {
+static void alarm_do_start(alarm_t *alarm, bool now) {
   if (alarm->timer != NULL) {
     app_timer_cancel(alarm->timer);
     alarm->timer = NULL;
   }
-  alarm->timer = app_timer_register(alarm->delay, alarm_callback, alarm);
+  alarm->timer = app_timer_register(now ? 0 : alarm->delay, alarm_callback, alarm);
 }
 
-void alarm_start(alarm_type type) {
+static void alarm_start_impl(alarm_type type, bool now) {
   alarm_t *alarm = s_alarm_defs[type];
   alarm->active = true;
   if (!alarm->inhibited) {
-    alarm_do_start(alarm);
+    alarm_do_start(alarm, now);
   }
+}
+
+void alarm_start(alarm_type type) {
+  alarm_start_impl(type, false);
+}
+
+void alarm_display(alarm_type type) {
+  alarm_start_impl(type, true);
 }
 
 void alarm_stop(alarm_type type) {
@@ -172,10 +196,14 @@ void alarm_enable(alarm_type type) {
   alarm_t *alarm = s_alarm_defs[type];
   alarm->inhibited = false;
   if (alarm->active) {
-    alarm_do_start(alarm);
+    alarm_do_start(alarm, false);
   }
 }
 
 bool alarm_is_inhibited(alarm_type type) {
   return s_alarm_defs[type]->inhibited;
+}
+
+bool alarm_is_active(alarm_type type) {
+  return s_alarm_defs[type]->active;
 }

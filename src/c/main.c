@@ -13,6 +13,7 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   clock_update(tick);
   elapsed_time_update(tick);
   mission_update(tick);
+  endurance_update();
 }
 
 static void down_single_click_handler(ClickRecognizerRef recognizer, void *context) {
