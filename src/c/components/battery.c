@@ -5,7 +5,7 @@ static Layer *s_battery_layer;
 static int s_battery_level;
 
 void battery_init(Layer *window_layer, GRect bounds) {
-  s_battery_layer = layer_create(GRect(0, 55, bounds.size.w, 2));
+  s_battery_layer = layer_create(GRect(0, 58, bounds.size.w, 2));
   layer_set_update_proc(s_battery_layer, battery_update_proc);
   layer_add_child(window_layer, s_battery_layer);
 }

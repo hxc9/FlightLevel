@@ -111,6 +111,7 @@ static void window_appear(Window *window) {
   s_display_timer = app_timer_register(s_last_alarm->hide_delay, window_expired, NULL);
   text_layer_set_text(s_label_layer, s_last_alarm->text);
   bitmap_layer_set_bitmap(s_icon_layer, s_last_alarm->important ? s_danger_bitmap : s_icon_bitmap);
+  window_set_background_color(s_main_window, PBL_IF_COLOR_ELSE(s_last_alarm->important ? GColorYellow : GColorJaegerGreen, GColorWhite));
 }
 
 static void window_disappear(Window *window) {
@@ -139,6 +140,8 @@ static void alarm_callback(void* data) {
   s_last_alarm = alarm;
   if (s_main_window == window_stack_get_top_window()) {
     text_layer_set_text(s_label_layer, s_last_alarm->text);
+    bitmap_layer_set_bitmap(s_icon_layer, s_last_alarm->important ? s_danger_bitmap : s_icon_bitmap);
+    window_set_background_color(s_main_window, PBL_IF_COLOR_ELSE(alarm->important ? GColorYellow : GColorJaegerGreen, GColorWhite));
     if (alarm->timer != NULL) {
       app_timer_reschedule(s_display_timer, s_last_alarm->hide_delay);
     }

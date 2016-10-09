@@ -8,7 +8,7 @@ static time_t s_endurance_at_takeoff = 0;
 static int s_endurance_level = -1;
 
 void endurance_init(Layer *window_layer, GRect bounds) {
-  s_endurance_layer = layer_create(GRect(0, 110, bounds.size.w, 2));
+  s_endurance_layer = layer_create(GRect(0, 107, bounds.size.w, 10));
   layer_set_update_proc(s_endurance_layer, endurance_update_proc);
   layer_add_child(window_layer, s_endurance_layer);
 }
@@ -26,9 +26,13 @@ void endurance_update_proc(Layer *layer, GContext *ctx) {
   GRect bounds = layer_get_bounds(layer);
   
   int width = (int)(float)(((float)s_endurance_level /100.0F) * bounds.size.w);
-  
   graphics_context_set_fill_color(ctx, GColorWhite);
-  graphics_fill_rect(ctx, GRect((bounds.size.w - width), 0, width, bounds.size.h), 0, GCornerNone);
+  graphics_fill_rect(ctx, GRect((bounds.size.w - width), 4, width, bounds.size.h / 5), 0, GCornerNone);
+  
+  if (s_endurance_at_takeoff > 45 * SECONDS_PER_MINUTE) {
+    int mark_pos = bounds.size.w - (int)(float)((45 * SECONDS_PER_MINUTE / (float) s_endurance_at_takeoff) * bounds.size.w);
+    graphics_fill_rect(ctx, GRect(mark_pos, 0, 2, bounds.size.h), 0, GCornerNone);
+  }
 }
 
 static void update_mission_display(time_t endurance_left) {

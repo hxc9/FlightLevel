@@ -10,7 +10,7 @@ static TextLayer *s_start_minute;
 static TextLayer *s_desc;
 
 void et_init(Layer *window_layer, GRect bounds) {
-  s_counter = configure_text_layer(window_layer, GRect(0, 115, bounds.size.w, 44), fonts_get_system_font(FONT_KEY_BITHAM_42_MEDIUM_NUMBERS), GTextAlignmentRight);
+  s_counter = configure_text_layer(window_layer, GRect(0, 115, bounds.size.w, 44), fonts_get_system_font(FONT_KEY_BITHAM_42_LIGHT), GTextAlignmentRight);
   s_start_minute = configure_text_layer(window_layer, GRect(0, 115, bounds.size.w, 44), fonts_get_system_font(FONT_KEY_BITHAM_34_MEDIUM_NUMBERS), GTextAlignmentLeft);
   s_desc = configure_text_layer(window_layer, GRect(10, bounds.size.h - 26, 20, 26), fonts_get_system_font(FONT_KEY_GOTHIC_24), GTextAlignmentLeft);
   text_layer_set_text(s_desc, "ET");
