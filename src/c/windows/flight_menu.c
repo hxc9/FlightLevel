@@ -1,6 +1,7 @@
 #include <pebble.h>
 #include "flight_menu.h"
 #include "../components/mission.h"
+#include "check_msg.h"
 
 static Window *s_main_window;
 static MenuLayer *s_menu_layer;
@@ -13,13 +14,11 @@ static uint16_t get_num_rows_callback(MenuLayer *menu_layer,
   return num_rows;
 }
 
-static bool s_fpl_check;
-
 static void draw_row_callback(GContext *ctx, const Layer *cell_layer, 
                                         MenuIndex *cell_index, void *context) {
   switch(cell_index->row) {
     case 0:
-      menu_cell_basic_draw(ctx, cell_layer, "Reminders", mission_checks_are_inhibited() ? "Enable" : "Inhibit", s_check_bitmap);
+      menu_cell_basic_draw(ctx, cell_layer, "Cruise check", alarm_is_inhibited(ALARM_CRUISE_CHECK) ? "Enable reminders" : "Inhibit reminders", s_check_bitmap);
       break;
     case 1:
       menu_cell_basic_draw(ctx, cell_layer, "Exit", "Long-press back", s_exit_bitmap);
@@ -28,7 +27,7 @@ static void draw_row_callback(GContext *ctx, const Layer *cell_layer,
       menu_cell_basic_draw(ctx, cell_layer, "Endurance", "not implemented/at take-off", s_gas_bitmap);
       break;
     case 3:
-      menu_cell_basic_draw(ctx, cell_layer, "Flight plan", s_fpl_check ? "Set alarm" : "Disable alarm", s_charlie_bitmap);
+      menu_cell_basic_draw(ctx, cell_layer, "Flight plan", alarm_is_inhibited(ALARM_FLIGHT_PLAN) ? "Set reminder" : "Flight plan closed?", s_charlie_bitmap);
       break;
     default:
       break;
@@ -45,7 +44,11 @@ static void select_callback(struct MenuLayer *menu_layer,
                                         MenuIndex *cell_index, void *context) {
   switch(cell_index->row) {
     case 0:
-      mission_checks_inhibit(!mission_checks_are_inhibited());
+      if (alarm_is_inhibited(ALARM_CRUISE_CHECK)) {
+        alarm_enable(ALARM_CRUISE_CHECK);
+      } else {
+        alarm_inhibit(ALARM_CRUISE_CHECK);
+      }
       window_stack_pop(true);
       break;
     case 1:
@@ -54,7 +57,11 @@ static void select_callback(struct MenuLayer *menu_layer,
     case 2:
       break;
     case 3:
-      s_fpl_check = !s_fpl_check;
+      if (alarm_is_inhibited(ALARM_FLIGHT_PLAN)) {
+        alarm_enable(ALARM_FLIGHT_PLAN);
+      } else {
+        alarm_inhibit(ALARM_FLIGHT_PLAN);
+      }
       menu_layer_reload_data(s_menu_layer);
       break;
     default:

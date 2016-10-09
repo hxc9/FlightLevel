@@ -14,10 +14,7 @@ static TextLayer *s_live_indicator;
 static Layer *s_layer_live_indicator;
 
 static AppTimer *s_display_timer = NULL;
-static AppTimer *s_vibes_timer = NULL;
-static AppTimer *s_checks_timer = NULL;
-
-static bool s_checks_inhibited;
+static AppTimer *s_vibes_timer = NULL;;
 
 typedef struct Info {
   bool active;
@@ -113,13 +110,6 @@ static phase_t s_taxi_dep = {
 };
 
 // In-flight phase definitions
-
-static void ft_check_reminder(void *data) {
-  vibes_double_pulse();
-  dialog_choice_window_push();
-  s_checks_timer = app_timer_register(CRUISE_CHECK_PERIOD_IN_MINUTES * SECONDS_PER_MINUTE * 1000 , ft_check_reminder, NULL);
-}
-
 static void ft_update(time_t tick) {
   time_t flight_time = tick - s_info_roll[TAKE_OFF].timestamp;
   format_duration_hhmm(flight_time, s_info_roll[FLIGHT_TIME].buf, sizeof(s_info_roll[FLIGHT_TIME].buf));
@@ -133,9 +123,7 @@ static void ft_start(time_t tick) {
   s_info_roll[TAKE_OFF].timestamp = tick;
   format_time_hhmm(tick, s_info_roll[TAKE_OFF].buf, sizeof(s_info_roll[TAKE_OFF].buf));
   s_info_roll[TAKE_OFF].active = true;
-  if (!s_checks_inhibited) {
-    s_checks_timer = app_timer_register(CRUISE_CHECK_PERIOD_IN_MINUTES * SECONDS_PER_MINUTE * 1000 , ft_check_reminder, NULL);
-  }
+  alarm_start(ALARM_CRUISE_CHECK);
   
   s_current_info_cat = TAKE_OFF;
   s_display_timer = app_timer_register(3000, switch_to_default, NULL);
@@ -145,12 +133,12 @@ static void ft_start(time_t tick) {
 static void ft_cancel() {
   s_info_roll[TAKE_OFF].active = false;
   strcpy(s_info_roll[TAKE_OFF].buf, "--:--");
-  app_timer_cancel(s_checks_timer);
+  alarm_stop(ALARM_CRUISE_CHECK);
 }
 
 static void ft_next() {
   layer_set_hidden(s_layer_live_indicator, true);
-  app_timer_cancel(s_checks_timer);
+  alarm_stop(ALARM_CRUISE_CHECK);
 }
 
 static phase_t s_inflight = {
@@ -159,20 +147,6 @@ static phase_t s_inflight = {
   .cancel = &ft_cancel,
   .update = &ft_update
 };
-
-
-bool mission_checks_are_inhibited() {
-  return s_checks_inhibited;
-}
-
-void mission_checks_inhibit(bool inhibit) {
-  if (inhibit) {
-    app_timer_cancel(s_checks_timer);
-  } else if (s_current_phase == INFLIGHT) {
-    s_checks_timer = app_timer_register(CRUISE_CHECK_PERIOD_IN_MINUTES * SECONDS_PER_MINUTE * 1000 , ft_check_reminder, NULL);
-  }
-  s_checks_inhibited = inhibit;
-}
 
 // Arrival taxi phase definitions
 
@@ -243,11 +217,14 @@ static void postflight_start(time_t tick) {
   s_current_info_cat = ON_BLOCK;
   s_display_timer = app_timer_register(3000, switch_to_default, NULL);
   change_display();
+  
+  alarm_start(ALARM_FLIGHT_PLAN);
 }
 
 static void postflight_cancel() {
   s_info_roll[ON_BLOCK].active = false;
   s_info_roll[BLOCK_TIME].active = false;
+  alarm_stop(ALARM_FLIGHT_PLAN);
 }
 
 static phase_t s_postflight = {
