@@ -5,13 +5,15 @@
 static Window *s_main_window;
 static MenuLayer *s_menu_layer;
 
-static GBitmap *s_check_bitmap, *s_gas_bitmap;
+static GBitmap *s_check_bitmap, *s_gas_bitmap, *s_exit_bitmap, *s_charlie_bitmap;
 
 static uint16_t get_num_rows_callback(MenuLayer *menu_layer, 
                                       uint16_t section_index, void *context) {
   const uint16_t num_rows = 4;
   return num_rows;
 }
+
+static bool s_fpl_check;
 
 static void draw_row_callback(GContext *ctx, const Layer *cell_layer, 
                                         MenuIndex *cell_index, void *context) {
@@ -20,13 +22,13 @@ static void draw_row_callback(GContext *ctx, const Layer *cell_layer,
       menu_cell_basic_draw(ctx, cell_layer, "Reminders", mission_checks_are_inhibited() ? "Enable" : "Inhibit", s_check_bitmap);
       break;
     case 1:
-      menu_cell_basic_draw(ctx, cell_layer, "Exit", "long press back", s_check_bitmap);
+      menu_cell_basic_draw(ctx, cell_layer, "Exit", "Long-press back", s_exit_bitmap);
       break;
     case 2:
-      menu_cell_basic_draw(ctx, cell_layer, "Endurance", "at take-off", s_gas_bitmap);
+      menu_cell_basic_draw(ctx, cell_layer, "Endurance", "not implemented/at take-off", s_gas_bitmap);
       break;
     case 3:
-      menu_cell_basic_draw(ctx, cell_layer, "Flight plan", "check closed", s_check_bitmap);
+      menu_cell_basic_draw(ctx, cell_layer, "Flight plan", s_fpl_check ? "Set alarm" : "Disable alarm", s_charlie_bitmap);
       break;
     default:
       break;
@@ -35,7 +37,7 @@ static void draw_row_callback(GContext *ctx, const Layer *cell_layer,
 
 static int16_t get_cell_height_callback(struct MenuLayer *menu_layer, 
                                         MenuIndex *cell_index, void *context) {
-  const int16_t cell_height = 44;
+  const int16_t cell_height = 40;
   return cell_height;
 }
 
@@ -49,6 +51,12 @@ static void select_callback(struct MenuLayer *menu_layer,
     case 1:
       window_stack_pop_all(true);
       break;
+    case 2:
+      break;
+    case 3:
+      s_fpl_check = !s_fpl_check;
+      menu_layer_reload_data(s_menu_layer);
+      break;
     default:
       break;
   }
@@ -60,6 +68,8 @@ static void window_load(Window *window) {
   
   s_check_bitmap = gbitmap_create_with_resource(RESOURCE_ID_CONFIRM_SMALL);
   s_gas_bitmap = gbitmap_create_with_resource(RESOURCE_ID_GAS);
+  s_exit_bitmap = gbitmap_create_with_resource(RESOURCE_ID_EXIT);
+  s_charlie_bitmap = gbitmap_create_with_resource(RESOURCE_ID_CHARLIE);
 
   s_menu_layer = menu_layer_create(bounds);
   menu_layer_set_click_config_onto_window(s_menu_layer, window);
@@ -83,6 +93,8 @@ static void window_unload(Window *window) {
   
   gbitmap_destroy(s_check_bitmap);
   gbitmap_destroy(s_gas_bitmap);
+  gbitmap_destroy(s_exit_bitmap);
+  gbitmap_destroy(s_charlie_bitmap);
   
   window_destroy(window);
   s_main_window = NULL;

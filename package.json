@@ -11,7 +11,30 @@
         "resources": {
             "media": [
                 {
-                    "file": "images/gas.png",
+                    "file": "images/charlie.pbi",
+                    "memoryFormat": "1Bit",
+                    "name": "CHARLIE",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/exit.pbi",
+                    "memoryFormat": "1Bit",
+                    "name": "EXIT",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/airplane.pbi",
+                    "memoryFormat": "1Bit",
+                    "menuIcon": true,
+                    "name": "AIRPLANE",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/gas.pbi",
+                    "memoryFormat": "1Bit",
                     "name": "GAS",
                     "targetPlatforms": null,
                     "type": "bitmap"
