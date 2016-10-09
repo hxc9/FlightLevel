@@ -2,8 +2,10 @@
 #include "flight_menu.h"
 #include "../components/mission.h"
 #include "check_msg.h"
+#include "../proto/pin_window.h"
 
 static Window *s_main_window;
+static PinWindow *s_pin_window;
 static MenuLayer *s_menu_layer;
 
 static GBitmap *s_check_bitmap, *s_gas_bitmap, *s_exit_bitmap, *s_charlie_bitmap;
@@ -55,6 +57,7 @@ static void select_callback(struct MenuLayer *menu_layer,
       window_stack_pop_all(true);
       break;
     case 2:
+      pin_window_push(s_pin_window, true);
       break;
     case 3:
       if (alarm_is_inhibited(ALARM_FLIGHT_PLAN)) {
@@ -67,6 +70,15 @@ static void select_callback(struct MenuLayer *menu_layer,
     default:
       break;
   }
+}
+
+
+static void pin_complete_callback(PIN pin, void *context) {
+
+  APP_LOG(APP_LOG_LEVEL_INFO, "Pin was %d %d %d", pin.digits[0], pin.digits[1], pin.digits[2]);
+
+  pin_window_pop((PinWindow*)context, true);
+
 }
 
 static void window_load(Window *window) {
@@ -93,6 +105,11 @@ static void window_load(Window *window) {
   });
   
   layer_add_child(window_layer, menu_layer_get_layer(s_menu_layer));
+  
+  PinWindowCallbacks callbacks = {
+    .pin_complete = pin_complete_callback
+  };
+  s_pin_window = pin_window_create(callbacks);
 }
 
 static void window_unload(Window *window) {
@@ -102,6 +119,8 @@ static void window_unload(Window *window) {
   gbitmap_destroy(s_gas_bitmap);
   gbitmap_destroy(s_exit_bitmap);
   gbitmap_destroy(s_charlie_bitmap);
+  
+  pin_window_destroy(s_pin_window);
   
   window_destroy(window);
   s_main_window = NULL;
